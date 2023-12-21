@@ -8,6 +8,14 @@ the list for off-domain URLs. This includes any links, either sourced from
 content or configuration, that do not exactly match the domain under which
 you're scanning. 
 
+The intent of this script is to identify links that might have been created
+using a development or staging instance that did not get properly changed
+when the site went live, or if a migrated site ended up with incorrect 
+links.
+
+*NOTE:* This does not discriminate from an accidental staging URL and a 
+legitimate external URL -- all reports should be scanned carefully. 
+
 For example, if you're scanning example.com and there are links using 
 dev.example.com, you will see the dev.example.com domains appear in 
 the report. 
