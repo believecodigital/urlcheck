@@ -52,6 +52,13 @@ async function findLinks(url) {
             console.dir(externals);
         }
     } catch (err) {
+        // Not all URLs will read properly the first time. This may be due
+        // to any number of issues with the host. WPEngine, through Cloudflare,
+        // seems to try to drop large hits, like this script might generate.
+        // The error captures below are just to allow the script to continue
+        // to function. BUT -- it's still an error, so we're going to respect
+        // the error, and after 5 tries, we give up on a URL. 
+
         var doloop = "";
         // If there's no err code, something Really Bad™ happened
         if (err.code !== "ETIMEDOUT" && 
