@@ -3,7 +3,7 @@ const axios = require("axios");
 const fs = require('fs');
 const readline = require('readline');
 
-const ignore = ['&quot;','mailto','wp-content','wp-json','.jpg','.png','.gif','.webp','.pdf','.css','.js','.php','.ico','.xml','.txt']
+const ignore = ['&quot;','mailto','wp-content','wp-json','.jpg','.png','.gif','.webp','.svg','.pdf','.css','.js','.php','.ico','.xml','.txt','.ttf','.src']
 const errs = ['301','302','404'];
 var origin = null;
 var scanned = [];
