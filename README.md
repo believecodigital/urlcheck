@@ -25,14 +25,14 @@ Example: ./linkcheck.sh believeco.com
 
 The output appears in report.txt, which has the format: 
 
-https://somedomain.com/page-uri
-[
-    https://someotherdomain.com/page-uri1,
-    https://someotherdomain.com/page-uri2,
-    https://someotherdomain.com/page-uri3,
-    https://someotherdomain.com/page-uri4,
-    https://someotherdomain.com/page-uri5
-]
+    https://somedomain.com/page-uri
+    [
+        https://someotherdomain.com/page-uri1,
+        https://someotherdomain.com/page-uri2,
+        https://someotherdomain.com/page-uri3,
+        https://someotherdomain.com/page-uri4,
+        https://someotherdomain.com/page-uri5
+    ]
 
 Due to the asynchronous nature of the tool, pages are not sorted in any
 manner, nor is there any deduplication -- you might see the same URL 
