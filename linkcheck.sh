@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Clean working files
+rm *.txt
+rm *.xml
+
 if [ $# -eq 0 ]
   then
     echo
@@ -28,10 +32,25 @@ if [ ! -d "node_modules" ]; then
   npm install
 fi
 
-echo
-echo "Obtaining URLs for $1"
-echo "This may take a while..."
-wget --spider --force-html -e robots=off -r -l5 $1 2>&1 | grep '^--' | awk '{print $3}' > urls.txt
+echo 
+echo "Attempt to obtain $1/sitemap.xml"
+if wget -q --method=HEAD $1/sitemap.xml;
+  then
+    wget -q $1/sitemap.xml
+
+    if grep -q '.xml' sitemap.xml
+      then
+        echo "Sitemap contains sub-files." 
+        cat sitemap.xml | sed 's/<loc>/\n<loc>/g' | egrep -o -- 'https:\/\/(.*)\.xml' | xargs wget -q 
+    fi
+  else
+    echo 
+    echo "No sitemap is available."   
+    echo
+    echo "Spidering $1 to obtain URLs."
+    echo "This may take a while..."
+    wget --spider --force-html -e robots=off -r -l5 -R 'jpg,gif,png,webp,svg,css,js,xml' $1 2>&1 | grep '^--' | awk '{print $3}' > urls.txt
+fi
 
 echo "Checking pages for off-domain links"
 node index.js > report.txt
