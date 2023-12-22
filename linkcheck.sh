@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Clean working files
-rm *.txt
-rm *.xml
+rm *.txt &> /dev/null
+rm *.xml &> /dev/null
 
 if [ $# -eq 0 ]
   then
@@ -33,7 +33,7 @@ if [ ! -d "node_modules" ]; then
 fi
 
 echo 
-echo "Attempt to obtain $1/sitemap.xml"
+echo "Attempting to obtain XML sitemap."
 if wget -q --method=HEAD $1/sitemap.xml;
   then
     wget -q $1/sitemap.xml
@@ -43,7 +43,16 @@ if wget -q --method=HEAD $1/sitemap.xml;
         echo "Sitemap contains sub-files." 
         cat sitemap.xml | sed 's/<loc>/\n<loc>/g' | egrep -o -- 'https:\/\/(.*)\.xml' | xargs wget -q 
     fi
-  else
+elif wget -q --method=HEAD $1/sitemap_index.xml;
+  then
+    wget -q $1/sitemap_index.xml
+
+    if grep -q '.xml' sitemap_index.xml
+      then
+        echo "Sitemap contains sub-files." 
+        cat sitemap_index.xml | sed 's/<loc>/\n<loc>/g' | egrep -o -- 'https:\/\/(.*)\.xml' | xargs wget -q 
+    fi
+else
     echo 
     echo "No sitemap is available."   
     echo

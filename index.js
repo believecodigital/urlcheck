@@ -2,6 +2,7 @@ const cheerio = require("cheerio");
 const axios = require("axios");
 const fs = require('fs');
 const readline = require('readline');
+const xml2js = require('xml2js');
 
 const ignore = ['&quot;','mailto','wp-content','wp-json','.jpg','.png','.gif','.webp','.svg','.pdf','.css','.js','.php','.ico','.xml','.txt','.ttf','.src']
 const errs = ['301','302','404'];
@@ -13,6 +14,10 @@ var timeouts = [];
 async function findLinks(url) {
     // if there's any non-HTML pages, bail
     if (ignore.some(el => url.includes(el))) return;
+    if (origin === null) {
+        var match = url.match(/((https?):\/\/)([A-Za-z0-9\-\.]*)\//);
+        if (match !== undefined && match[3] !== undefined) origin = match[3];
+    }
     try {
         const { data } = await axios.get(url);
         const $ = cheerio.load(data);
@@ -49,16 +54,24 @@ async function findLinks(url) {
     } catch (err) {
         var doloop = "";
         // If there's no err code, something Really Bad™ happened
-        if (err.code !== "ETIMEDOUT" && err.code !== "ERR_BAD_REQUEST"  && err.code !== "ERR_BAD_RESPONSE" && err.code !== "ECONNREFUSED" ) {
+        if (err.code !== "ETIMEDOUT" && 
+            err.code !== "ERR_BAD_REQUEST" && 
+            err.code !== "ERR_BAD_RESPONSE" && 
+            err.code !== "ECONNREFUSED" &&
+            err.code !== "EPIPE" &&
+            err.code !== "EADDRNOTAVAIL" &&
+            err.code !== "ECONNRESET") {
             console.log(err);
             process.exit(1); // Stops the code
         }
-        if (err.code === "ECONNREFUSED" && (url !== null && url !== "")) {
+        // If the connection is refused outright, abort scanning it
+        if (err.code === "ECONNREFUSED" && 
+            (url !== null && url !== "")) {
             console.log("Connection refused on " + url);
             url = "";
         }
-        //console.log(err);
-        if ((err.response !== undefined && err.response.status !== undefined) && (errs.includes(err.response.status))) {
+        if ((err.response !== undefined && err.response.status !== undefined) && 
+             errs.includes(err.response.status)) {
             // this is a 301,302, or 404 response, so skip
         }
         else {
@@ -76,7 +89,6 @@ async function findLinks(url) {
                     console.log('Too many errors on ' + url);
                     url = '';
                 }
-
             }
             else {
                 // set first iteration
@@ -92,27 +104,51 @@ async function findLinks(url) {
     }
 }
 
-var rd = readline.createInterface({
-    input: fs.createReadStream('urls.txt'),
-    console: false
-});
-
-rd.on('line', function(line) {
-    if (!(ignore.some(el => line.includes(el))) && !scanned.includes(line)) scanned.push(line);
-});
-rd.on('close', function() {
-    // First line is the base URL; use this to find the origin domain
-    var match = (scanned.shift()).match(/((https?):\/\/)(.*)\//);
-    // sort so output is less janky
-    scanned.sort();
-    // make sure there's a match
-    if (match !== null && match[3] !== undefined) {
-        origin = match[3];
-        if (scanned !== null && scanned.length>0) {
-            for (i in scanned) {
-                findLinks(scanned[i]);
+// We're going to read files differently depending on the source
+// If urls.txt exists, it's because we had to spider
+if (fs.existsSync('urls.txt')) {
+    var rd = readline.createInterface({
+        input: fs.createReadStream('urls.txt'),
+        console: false
+    });
+    
+    rd.on('line', function(line) {
+        if (!(ignore.some(el => line.includes(el))) && !scanned.includes(line)) scanned.push(line);
+    });
+    rd.on('close', function() {
+        // First line is the base URL; use this to find the origin domain
+        var match = (scanned.shift()).match(/((https?):\/\/)(.*)\//);
+        // sort so output is less janky
+        scanned.sort();
+        // make sure there's a match
+        if (match !== null && match[3] !== undefined) {
+            origin = match[3];
+            if (scanned !== null && scanned.length>0) {
+                for (i in scanned) {
+                    findLinks(scanned[i]);
+                }
             }
         }
-    }
-});
+    });
+}
+else {
+    // We have sitemaps, which are (presumably) all downloaded, so we'll 
+    // scan them, once a time, get their URLs and look for links in those
+    // We can't load all of these into the scanned array due to scoping 
+    // with fs.readFile. But there's less of a chance of duplication when
+    // using sitemaps.
+    var files = fs.readdirSync(__dirname).filter(fn => fn.endsWith('.xml'));
+    files.forEach((file) => {
+        var parser = new xml2js.Parser();
+        fs.readFile(__dirname + '/' + file, function(err, data) {
+            parser.parseString(data, function (err, result) {
+                if (result.urlset !== undefined) {
+                    result.urlset.url.forEach((uri) => {
+                        findLinks(uri.loc[0]);
+                    });
+                }
+            });
+        });
+    });
+}
 
